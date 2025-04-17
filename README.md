@@ -37,7 +37,7 @@ Follow these steps to set up the project:
 
 ## 📸 Preview
 <div align="center">
-  <img src="screenshots/app-preview.png" width="600" alt="ChatSphere Preview">
+  <img src="public/logo.png" width="600" alt="ChatSphere Preview">
 </div>
 
 ## 🌐 Live Demo
