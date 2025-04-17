@@ -1,7 +1,7 @@
 # 💬 ChatSphere - React Chat Application
 
 <div align="center">
-  <img src="public/logo.svg" width="150" alt="ChatNest Logo">
+  <img src="public/logo.png" width="150" alt="ChatNest Logo">
 </div>
 
 ## ✨ Key Features
