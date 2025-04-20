@@ -37,11 +37,11 @@ Follow these steps to set up the project:
 
 ## 📸 Preview
 <div align="center">
-  <img src="public/logo.png" width="600" alt="ChatSphere Preview">
+  <img src="public/preview.PNG" width="600" alt="ChatSphere Preview">
 </div>
 
 ## 🌐 Live Demo
-[View Demo](#)
+[View Demo](https://chat-sphere-five.vercel.app/)
 
 ## 🤝 Contributing
 We welcome pull requests! Please open an issue first to discuss potential changes.
