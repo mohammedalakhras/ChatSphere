@@ -2,42 +2,37 @@ import React, { useState, useEffect } from "react";
 import getChats from "./utils/getChats";
 import ChatWindow from "./components/Messages";
 import socket from "./utils/socket";
+import styles from "./css/PostRestData.module.css";
 
 function PostRestData() {
   const [chats, setChats] = useState([]);
   const [msg, setMsg] = useState("");
   const [to, setTo] = useState("");
   const [colored, setColored] = useState("");
+  // Show chat list by default on larger screens; on mobile it will be off-canvas.
+  const [showChatList, setShowChatList] = useState(window.innerWidth >= 768);
 
+  // Update conversation details from server events.
   function handleUpdateMessage(updatedConversation) {
-    console.log("updaeed chats", updatedConversation);
-
     setChats((prevChats) => {
       const updatedChats = [...prevChats];
       const index = updatedChats.findIndex(
         (chat) => chat.id === updatedConversation.chatPartner
       );
-
       if (index !== -1) {
         updatedChats[index] = {
           ...updatedChats[index],
-          // photo: updatedConversation.photo,
-          // lastMessage: updatedConversation.lastMessage,
-          // lastMessageDate: updatedConversation.lastMessageDate,
-          // lastLoginTime: updatedConversation.lastLoginTime,
-          ...updatedConversation
+          lastMessageDate: updatedConversation.lastMessageDate,
+          lastLoginTime: updatedConversation.lastLoginTime,
+          ...updatedConversation,
         };
-        console.log("after updaeed chats", updatedChats[index]);
       } else {
         updatedChats.push({
           messageCount: 1,
           id: updatedConversation.chatPartner,
-          // lastMessage: updatedConversation.lastMessage,
-          // lastMessageDate: updatedConversation.lastMessageDate,
-          // fullName: updatedConversation.fullName,
-          // photo: updatedConversation.photo,
-          // lastLoginTime: updatedConversation.lastLoginTime,
-          ...updatedConversation
+          lastMessageDate: updatedConversation.lastMessageDate,
+          lastLoginTime: updatedConversation.lastLoginTime,
+          ...updatedConversation,
         });
       }
       updatedChats.sort(
@@ -47,22 +42,20 @@ function PostRestData() {
     });
   }
 
+  // Update chat list when a new message is received.
   function handleReceivedMessage(message) {
     setChats((prevChats) => {
       const updatedChats = [...prevChats];
       const chatPartner = message.sender._id;
-
-      console.log("erecieved", message);
-
       if (
-        chatPartner === JSON.parse(window.localStorage.getItem("userdata"))._id
+        chatPartner === JSON.parse(window.localStorage.getItem("userdata"))
+          ._id
       ) {
         socket.emit("messageRead", message);
         handleMessagesRead(chatPartner);
       } else {
         socket.emit("messageDelivered", message);
       }
-
       const index = updatedChats.findIndex((chat) => chat.id === chatPartner);
       if (index !== -1) {
         updatedChats[index] = {
@@ -83,16 +76,14 @@ function PostRestData() {
           messageCount: 1,
         });
       }
-
       updatedChats.sort(
         (a, b) => new Date(b.lastMessageDate) - new Date(a.lastMessageDate)
       );
-
       return updatedChats;
     });
   }
 
-  // Callback to clear the unread count when messages are read
+  // Reset unread message count when messages are read.
   function handleMessagesRead(partnerId) {
     setChats((prevChats) =>
       prevChats.map((chat) =>
@@ -103,9 +94,7 @@ function PostRestData() {
 
   useEffect(() => {
     socket.on("connect", () => {
-      console.log("Connected via socket:", socket.connected);
       socket.emit("signin", window.localStorage.getItem("token"));
-
       getChats(setChats);
     });
     socket.on("updatedMessage", handleUpdateMessage);
@@ -113,13 +102,10 @@ function PostRestData() {
     socket.on("lastSeenUpdate", (data) => {
       setChats((prevChats) =>
         prevChats.map((chat) =>
-          chat.id === data.userId
-            ? { ...chat, lastLoginTime: data.lastSeen }
-            : chat
+          chat.id === data.userId ? { ...chat, lastLoginTime: data.lastSeen } : chat
         )
       );
     });
-
     return () => {
       socket.off("updatedMessage");
       socket.off("receive");
@@ -139,164 +125,78 @@ function PostRestData() {
     setMsg("");
   };
 
+  // When a chat card is clicked, mark it as selected.
+  const handleChatCardClick = (c, i) => {
+    setTo(c.id);
+    setColored(i);
+    // On small screens, collapse the chat list after a selection.
+    if (window.innerWidth < 768) {
+      setShowChatList(false);
+    }
+  };
+
   return (
-    <div
-      className="container"
-      style={{
-        display: "flex",
-        height: "100vh",
-        overflow: "hidden",
-        margin: "0",
-        padding: "0",
-      }}
-    >
+    <div className={styles.container}>
       {/* Left Chat List */}
-      <div
-        className="chat-list"
-        style={{
-          width: "30%",
-          borderRight: "1px solid #ccc",
-          overflowY: "auto",
-        }}
-      >
-        <div
-          style={{
-            padding: "1rem",
-            borderBottom: "1px solid #ccc",
-            backgroundColor: "#f7f7f7",
-          }}
-        >
+      <div className={`${styles.chatList} ${showChatList ? styles.show : ""}`}>
+        <div className={styles.chatListHeader}>
           <h3>Chats</h3>
+          {window.innerWidth < 768 && (
+            <button
+              onClick={() => setShowChatList(false)}
+              className={styles.closeList}
+            >
+              &times;
+            </button>
+          )}
         </div>
-
-        {console.log("chats", chats)}
-
         {chats.map((c, i) => (
           <div
             key={c.id}
-            className={`chat-card ${colored === i ? "active" : ""}`}
-            onClick={() => {
-              setTo(c.id);
-              setColored(i);
-            }}
-            style={{
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              padding: "1rem",
-              borderBottom: "1px solid #f0f0f0",
-              backgroundColor: colored === i ? "#f5f7fb" : "white",
-              transition: "background-color 0.2s ease",
-              position: "relative",
-            }}
-            
+            className={`${styles.chatCard} ${colored === i ? styles.active : ""}`}
+            onClick={() => handleChatCardClick(c, i)}
           >
-            {/* Avatar */}
-            <div
-              style={{
-                marginRight: "1rem",
-                width: "50px",
-                height: "50px",
-                borderRadius: "50%",
-                backgroundColor: "#e8eaf6",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
-              }}
-            >
+            <div className={styles.avatar}>
               {c.photo ? (
-                <img
-                  src={c.photo}
-                  alt={c.fullName}
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
-                />
+                <img src={c.photo} alt={c.fullName} />
               ) : (
-                <span
-                  style={{
-                    fontSize: "1.2rem",
-                    fontWeight: "500",
-                    color: "#3f51b5",
-                  }}
-                >
-                  {c.fullName}
-                </span>
+                <span>{c.fullName ? c.fullName[0] : ""}</span>
               )}
             </div>
-            {/* Chat details */}
-            <div style={{ flexGrow: 1 }}>
-              <h4
-                style={{
-                  margin: 0,
-                  fontSize: "1rem",
-                  fontWeight: "600",
-                  color: "#1a1a1a",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {c.fullName}
-              </h4>
-              <p
-                style={{
-                  margin: 0,
-                  color: "#666",
-                  fontSize: "0.9rem",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {c.lastMessage || "New conversation"}
-              </p>
+            <div className={styles.chatDetails}>
+              <h4 className={styles.chatName}>{c.fullName}</h4>
+              <p className={styles.chatMessage}>{c.lastMessage || "New conversation"}</p>
             </div>
-            <div
-              style={{
-                fontSize: "0.8rem",
-                color: "#666",
-                marginLeft: "0.5rem",
-              }}
-            >
+            <div className={styles.chatTime}>
               {new Date(c.lastMessageDate).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
               })}
             </div>
-            {c.messageCount > 0 && (
-              <div
-                style={{
-                  backgroundColor: "#3f51b5",
-                  color: "white",
-                  borderRadius: "12px",
-                  padding: "4px 8px",
-                  fontSize: "0.75rem",
-                  fontWeight: "600",
-                  minWidth: "24px",
-                  textAlign: "center",
-                  position: "absolute",
-                  top: "5px",
-                  right: "10px",
-                }}
-              >
-                {c.messageCount}
-              </div>
-            )}
+            {c.messageCount > 0 && <div className={styles.badge}>{c.messageCount}</div>}
           </div>
         ))}
       </div>
 
       {/* Right Chat Area */}
-      <div
-        className="chat-area"
-        style={{ width: "70%", display: "flex", flexDirection: "column" }}
-      >
-        {/* ChatWindow now receives an onCloseChat callback */}
-        <div style={{ flexGrow: 1, overflowY: "auto", width: "100%" }}>
+      <div className={styles.chatArea}>
+        {/* Mobile Header to toggle Chat List */}
+        {window.innerWidth < 768 && (
+          <div className={styles.mobileHeader}>
+            <button
+              className={styles.toggleButton}
+              onClick={() => setShowChatList(true)}
+            >
+              &#9776;
+            </button>
+            {to && (
+              <span className={styles.mobileChatTitle}>
+                {chats.find((chat) => chat.id === to)?.fullName || ""}
+              </span>
+            )}
+          </div>
+        )}
+        <div className={styles.chatAreaContent}>
           {to ? (
             <ChatWindow
               partnerId={to}
@@ -310,35 +210,17 @@ function PostRestData() {
               setChats={setChats}
             />
           ) : (
-            <div style={{ padding: "1rem" }}>
-              Select a chat to start conversation
-            </div>
+            <div className={styles.emptyChat}>Select a chat to start a conversation</div>
           )}
         </div>
-        {/* Message input area */}
-        <div
-          style={{
-            padding: "1rem",
-            borderTop: "1px solid #ccc",
-            backgroundColor: "#f7f7f7",
-          }}
-        >
-          <form
-            onSubmit={submitHandler}
-            style={{ display: "flex", alignItems: "center" }}
-          >
+        <div className={styles.chatInputArea}>
+          <form onSubmit={submitHandler} className={styles.messageForm}>
             <input
               type="text"
               placeholder="Type your message..."
               value={msg}
               onChange={(e) => setMsg(e.target.value)}
-              style={{
-                flexGrow: 1,
-                padding: "0.5rem",
-                marginRight: "0.5rem",
-                borderRadius: "4px",
-                border: "1px solid #ccc",
-              }}
+              className={styles.messageInput}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
@@ -349,18 +231,7 @@ function PostRestData() {
                 }
               }}
             />
-            <button
-              type="button"
-              onClick={socketSend}
-              style={{
-                padding: "0.5rem 1rem",
-                backgroundColor: "#3f51b5",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                cursor: "pointer",
-              }}
-            >
+            <button type="button" onClick={socketSend} className={styles.sendButton}>
               Send
             </button>
             <input
@@ -368,13 +239,7 @@ function PostRestData() {
               placeholder="To (id)"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              style={{
-                marginLeft: "0.5rem",
-                padding: "0.5rem",
-                borderRadius: "4px",
-                border: "1px solid #ccc",
-                width: "150px",
-              }}
+              className={styles.toInput}
             />
           </form>
         </div>

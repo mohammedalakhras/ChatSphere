@@ -2,22 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import socket from "../utils/socket";
 import ChatHeader from "./ChatHeader";
-
-// دالة مساعدة لتحديد العرض والأسلوب بناءً على حالة الرسالة
-const getStatusIndicator = (status) => {
-  // يمكنك استبدال هذه النصوص بأيقونات، مثلاً باستخدام مكتبة FontAwesome أو Material Icons
-  if (status === "sent") return "✓"; // رسالة مرسلة
-  if (status === "delivered") return "✓✓"; // رسالة تم تسليمها
-  if (status === "read") return "✓✓"; // رسالة تمت قراءتها
-  return "";
-};
-
-const getStatusStyle = (status) => {
-  if (status === "sent") return { color: "#999" };
-  if (status === "delivered") return { color: "#91A48D" };
-  if (status === "read") return { color: "#00FF00" };
-  return {};
-};
+import styles from "./css/ChatWindow.module.css";
 
 const ChatWindow = ({
   partnerId,
@@ -28,33 +13,58 @@ const ChatWindow = ({
   setChats,
 }) => {
   const [messages, setMessages] = useState([]);
+  const [skips, setSkips] = useState(0);
+  const [loading, setLoading] = useState(false);
   const scrollRef = useRef(null);
 
-  // جلب الرسائل عند تغيير partnerId
-  useEffect(() => {
-    async function fetchMessages() {
-      try {
-        const token = window.localStorage.getItem("token");
-        await axios
-          .get(`${process.env.REACT_APP_SERVER_HOST}/api/chats/getMessages/${partnerId}`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-          .then((res) => setMessages(res.data))
-          .catch((err) => setMessages([]));
-      } catch (error) {
-        console.error("Error fetching messages:", error);
-      }
-    }
+  // helper function for status indicator
+  const getStatusIndicator = (status) => {
+    if (status === "sent") return "✓";
+    if (status === "delivered") return "✓✓";
+    if (status === "read") return "✓✓";
+    return "";
+  };
 
+  // helper function returning CSS class based on status
+  const getStatusClassName = (status) => {
+    if (status === "sent") return styles.statusSent;
+    if (status === "delivered") return styles.statusDelivered;
+    if (status === "read") return styles.statusRead;
+    return "";
+  };
+
+  // function to fetch messages based on skip value
+  const fetchMessages = async (currentSkips) => {
+    try {
+      const token = window.localStorage.getItem("token");
+      const res = await axios.get(
+        `${process.env.REACT_APP_SERVER_HOST}/api/chats/getMessages/${partnerId}/${currentSkips}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      return res.data;
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      return [];
+    }
+  };
+
+  // load initial messages when partnerId changes
+  useEffect(() => {
     if (partnerId) {
-      fetchMessages();
+      setSkips(0);
+      fetchMessages(0).then((initialMessages) => {
+        setMessages(initialMessages);
+        if (scrollRef.current) {
+          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+      });
     }
   }, [partnerId]);
 
-  // استقبال الرسائل الجديدة عبر socket
+  // listen for incoming messages and status updates via socket
   useEffect(() => {
     const handleReceiveMessage = (message) => {
-      // تحويل sender إلى معرف فقط
+      // convert sender to id only
       message.sender = message.sender._id;
       if (
         partnerId &&
@@ -71,11 +81,11 @@ const ChatWindow = ({
     };
 
     const handleChangeMessageStatus = ({ id, status }) => {
-      setMessages((prevMsgs) => {
-        return prevMsgs.map((msg) =>
+      setMessages((prevMsgs) =>
+        prevMsgs.map((msg) =>
           msg._id === id ? { ...msg, status: status } : msg
-        );
-      });
+        )
+      );
     };
 
     socket.on("receive", handleReceiveMessage);
@@ -89,18 +99,17 @@ const ChatWindow = ({
     };
   }, [partnerId, myId]);
 
-  // Auto-scroll إلى الأسفل عند تحديث الرسائل
+  // auto-scroll to the bottom when messages update
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
 
-  // تعليم الرسائل الواردة كمقروءة وإعلام المكوّن الأب لتحديث عداد الرسائل
+  // mark received messages as read and notify parent
   useEffect(() => {
     let updated = false;
     messages.forEach((msg) => {
-      // إذا كانت الرسالة واردة (sender ليس هو المستخدم) وحالتها ليست "read"
       if (msg.sender !== myId && msg.status !== "read") {
         msg.sender = { _id: msg.sender };
         socket.emit("messageRead", msg);
@@ -112,9 +121,25 @@ const ChatWindow = ({
     }
   }, [messages, myId, partnerId]);
 
+  // load older messages when scrolling to the top
+  const handleScroll = async () => {
+    if (scrollRef.current.scrollTop === 0 && !loading) {
+      setLoading(true);
+      const previousHeight = scrollRef.current.scrollHeight;
+      const newSkip = skips + 1;
+      const olderMessages = await fetchMessages(newSkip);
+      if (olderMessages && olderMessages.length > 0) {
+        setMessages((prevMsgs) => [...olderMessages, ...prevMsgs]);
+        setSkips(newSkip);
+        const newHeight = scrollRef.current.scrollHeight;
+        scrollRef.current.scrollTop = newHeight - previousHeight;
+      }
+      setLoading(false);
+    }
+  };
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "85vh" }}>
-      {/* رأس المحادثة الجديد */}
+    <div className={styles.chatContainer}>
       {partnerInfo && (
         <ChatHeader
           partnerInfo={partnerInfo}
@@ -123,60 +148,36 @@ const ChatWindow = ({
         />
       )}
       <div
-        className="chat-window"
-        style={{
-          height: "85vh",
-          overflowY: "auto",
-          padding: "15px",
-          backgroundColor: "#f5f5f5",
-          borderRadius: "8px",
-        }}
+        className={styles.messagesContainer}
         ref={scrollRef}
+        onScroll={handleScroll}
       >
-        {console.log(messages)}
         {messages.map((msg) => {
           const isMyMessage = msg.sender === myId;
           return (
             <div
               key={msg._id}
-              style={{
-                display: "flex",
-                justifyContent: isMyMessage ? "flex-end" : "flex-start",
-                marginBottom: "15px",
-              }}
+              className={`${styles.messageRow} ${
+                isMyMessage ? styles.myRow : styles.partnerRow
+              }`}
             >
               <div
-                style={{
-                  maxWidth: "70%",
-                  padding: "10px 15px",
-                  borderRadius: "20px",
-                  backgroundColor: isMyMessage ? "#007bff" : "#ffffff",
-                  color: isMyMessage ? "white" : "#333",
-                  boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                  wordBreak: "break-word",
-                  position: "relative",
-                }}
+                className={`${styles.messageBubble} ${
+                  isMyMessage ? styles.myMessage : styles.partnerMessage
+                }`}
               >
-                <p style={{ margin: "0 0 5px 0" }}>{msg.content}</p>
+                <p className={styles.messageText}>{msg.content}</p>
                 <div
-                  style={{
-                    fontSize: "0.75em",
-                    color: isMyMessage ? "#e0e0e0" : "#666",
-                    textAlign: "right",
-                  }}
+                  className={`${styles.timeIndicator} ${
+                    isMyMessage ? styles.timeMy : styles.timePartner
+                  }`}
                 >
                   {new Date(msg.createdAt).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}
-                  {/* عرض مؤشر الحالة بجانب التوقيت */}
                   {isMyMessage && (
-                    <span
-                      style={{
-                        marginLeft: "8px",
-                        ...getStatusStyle(msg.status),
-                      }}
-                    >
+                    <span className={getStatusClassName(msg.status)}>
                       {getStatusIndicator(msg.status)}
                     </span>
                   )}
