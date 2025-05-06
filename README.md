@@ -57,13 +57,13 @@ The application consists of two main sections:
   <img src="public/preview.PNG" width="600" alt="ChatSphere Preview">
 </div>
 <div align="center">
-  <img src="public/preview2.PNG" width="600" alt="ChatSphere Preview">
+  <img src="public/preview2.png" width="600" alt="ChatSphere Preview">
 </div>
 <div align="center">
-  <img src="public/preview3.PNG" width="600" alt="ChatSphere Preview">
+  <img src="public/preview3.png" width="600" alt="ChatSphere Preview">
 </div>
 <div align="center">
-  <img src="public/preview4.PNG" width="300" alt="ChatSphere Preview">
+  <img src="public/preview4.png" width="300" alt="ChatSphere Preview">
 </div>
 
 
