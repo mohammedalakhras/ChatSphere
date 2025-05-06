@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import socket from "../utils/socket";
 import ChatHeader from "./ChatHeader";
+import CustomAudioPlayer from "./CustomAudioPlayer";
 import styles from "./css/ChatWindow.module.css";
 
 const ChatWindow = ({
@@ -15,6 +16,7 @@ const ChatWindow = ({
   const [messages, setMessages] = useState([]);
   const [skips, setSkips] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [mediaElements, setMediaElements] = useState({});
   const scrollRef = useRef(null);
 
   // helper function for status indicator
@@ -64,6 +66,7 @@ const ChatWindow = ({
   // listen for incoming messages and status updates via socket
   useEffect(() => {
     const handleReceiveMessage = (message) => {
+      console.log("message", message);
       // convert sender to id only
       message.sender = message.sender._id;
       if (
@@ -138,6 +141,120 @@ const ChatWindow = ({
     }
   };
 
+  const createMediaElement = (media) => {
+    if (!media || !media.url) return null;
+
+    const mediaUrl = media.url;
+
+    switch (media.type) {
+      case 'image':
+        return (
+          <img 
+            src={mediaUrl} 
+            alt="Shared image" 
+            className={styles.mediaContent}
+            onError={(e) => {
+              console.error("Error loading image");
+              e.target.src = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40NzcgMiAyIDYuNDc3IDIgMTJzNC40NzcgMTAgMTAgMTAgMTAtNC40NzcgMTAtMTBTMTcuNTIzIDIgMTIgMnptMSAxNWgtMnYtMmgydjJ6bTAtNGgtMlY3aDJ2NnoiIGZpbGw9IiNGRjU3MjIiLz48L3N2Zz4=";
+              e.target.classList.add(styles.errorImage);
+              
+              // Add deleted message text
+              const errorElement = document.createElement('div');
+              errorElement.className = styles.mediaError;
+              errorElement.innerHTML = '<span class="' + styles.mediaErrorIcon + '">🗑️</span> Image not found or deleted from server';
+              e.target.parentNode.appendChild(errorElement);
+            }}
+          />
+        );
+      case 'video':
+        return (
+          <video 
+            controls 
+            className={styles.mediaContent}
+            onError={(e) => {
+              console.error("Error loading video");
+              e.target.style.display = 'none';
+              const errorElement = document.createElement('div');
+              errorElement.className = styles.mediaError;
+              errorElement.innerHTML = '<span class="' + styles.mediaErrorIcon + '">🗑️</span> Video not found or deleted from server';
+              e.target.parentNode.appendChild(errorElement);
+            }}
+          >
+            <source 
+              src={mediaUrl} 
+              type="video/mp4" 
+            />
+            Your browser does not support the video tag.
+          </video>
+        );
+      case 'audio':
+        return (
+          <div className={styles.voiceMessageContainer}>
+            <CustomAudioPlayer 
+              src={mediaUrl}
+              onError={(error) => {
+                console.error("Error loading audio:", error);
+              }}
+            />
+          </div>
+        );
+      case 'document':
+        return (
+          <a 
+            href={mediaUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className={styles.documentLink}
+            // onClick={(e) => {
+            //   // Prevent navigation if the link might be broken
+             
+              
+            //   // Test if the document exists by making a HEAD request
+            //   fetch(mediaUrl, { method: 'HEAD' })
+            //     .then(response => {
+            //       if (response.ok) {
+            //         // File exists, navigate to it
+            //         window.open(mediaUrl, '_blank', 'noopener,noreferrer');
+            //       } else {
+            //         // File doesn't exist, show error
+            //         const errorElement = document.createElement('div');
+            //         errorElement.className = styles.mediaError;
+            //         errorElement.innerHTML = '<span class="' + styles.mediaErrorIcon + '">🗑️</span> Document not found or deleted from server';
+            //         e.target.parentNode.appendChild(errorElement);
+            //         e.target.style.display = 'none';
+            //       }
+            //     })
+            //     .catch(() => {
+            //       // Error making request, assume file doesn't exist
+            //       const errorElement = document.createElement('div');
+            //       errorElement.className = styles.mediaError;
+            //       errorElement.innerHTML = '<span class="' + styles.mediaErrorIcon + '">🗑️</span> Document not found or deleted from server';
+            //       e.target.parentNode.appendChild(errorElement);
+            //       e.target.style.display = 'none';
+            //     });
+            // }}
+          >
+            📄 Document
+          </a>
+        );
+      default:
+        return null;
+    }
+  };
+
+  // Create media elements when messages change
+  useEffect(() => {
+    const newMediaElements = {};
+    
+    for (const msg of messages) {
+      if (msg.media && msg.media.url) {
+        newMediaElements[msg._id] = createMediaElement(msg.media);
+      }
+    }
+    
+    setMediaElements(newMediaElements);
+  }, [messages]);
+
   return (
     <div className={styles.chatContainer}>
       {partnerInfo && (
@@ -166,7 +283,8 @@ const ChatWindow = ({
                   isMyMessage ? styles.myMessage : styles.partnerMessage
                 }`}
               >
-                <p className={styles.messageText}>{msg.content}</p>
+                {msg.media && mediaElements[msg._id]}
+                {msg.content && <p className={styles.messageText}>{msg.content}</p>}
                 <div
                   className={`${styles.timeIndicator} ${
                     isMyMessage ? styles.timeMy : styles.timePartner
