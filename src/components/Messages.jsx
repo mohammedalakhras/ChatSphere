@@ -234,7 +234,7 @@ const ChatWindow = ({
             //     });
             // }}
           >
-            📄 Document
+            <span>📄</span> Document
           </a>
         );
       default:

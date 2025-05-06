@@ -412,7 +412,7 @@ function PostRestData(props) {
               className={styles.uploadButton}
               disabled={uploading || !to}
             >
-              {uploading ? 'Uploading...' : '📎'}
+              {uploading ? <span className={styles.uploadingText}>Uploading...</span> : '📎'}
             </button>
             <button
               type="button"
@@ -428,19 +428,19 @@ function PostRestData(props) {
               {recordingStatus && <span className={styles.recordingStatus}>{recordingStatus}</span>}
             </button>
             <div className={styles.messageInputContainer}>
-              <input
-                type="text"
+              <textarea
                 placeholder={pendingMedia ? "Add a message or send..." : "Type your message..."}
                 value={msg}
                 onChange={(e) => setMsg(e.target.value)}
                 className={`${styles.messageInput} ${pendingMedia ? styles.withMedia : ''}`}
+                rows="1"
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && !e.shiftKey) {
                     e.preventDefault();
                     socketSend();
                   }
                 }}
-              />
+              ></textarea>
               {pendingMedia && (
                 <div className={styles.attachmentIndicator}>
                   {pendingMedia.type === 'image' ? '🖼️' : 
