@@ -74,4 +74,4 @@ The application consists of two main sections:
 We welcome pull requests! Please open an issue first to discuss potential changes.
 
 ## 📜 License
-MIT © 2025 [Mohammed Al-Akhras](https://t.me/@Mohammed_Alakhras)
+MIT © 2025 [Mohammed Al-Akhras](https://t.me/Mohammed_Alakhras)
