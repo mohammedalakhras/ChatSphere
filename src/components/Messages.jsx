@@ -55,6 +55,8 @@ const ChatWindow = ({
     if (partnerId) {
       setSkips(0);
       fetchMessages(0).then((initialMessages) => {
+        // Sort messages by sentAt timestamp
+        initialMessages.sort((a, b) => new Date(a.sentAt) - new Date(b.sentAt));
         setMessages(initialMessages);
         if (scrollRef.current) {
           scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
@@ -78,7 +80,9 @@ const ChatWindow = ({
           if (prevMessages.some((msg) => msg._id === message._id)) {
             return prevMessages;
           }
-          return [...prevMessages, message];
+          // Add the new message and sort by sentAt
+          const updatedMessages = [...prevMessages, message];
+          return updatedMessages.sort((a, b) => new Date(a.sentAt) - new Date(b.sentAt));
         });
       }
     };
@@ -132,7 +136,11 @@ const ChatWindow = ({
       const newSkip = skips + 1;
       const olderMessages = await fetchMessages(newSkip);
       if (olderMessages && olderMessages.length > 0) {
-        setMessages((prevMsgs) => [...olderMessages, ...prevMsgs]);
+        // Sort combined messages by sentAt timestamp
+        setMessages((prevMsgs) => {
+          const combinedMessages = [...olderMessages, ...prevMsgs];
+          return combinedMessages.sort((a, b) => new Date(a.sentAt) - new Date(b.sentAt));
+        });
         setSkips(newSkip);
         const newHeight = scrollRef.current.scrollHeight;
         scrollRef.current.scrollTop = newHeight - previousHeight;
@@ -290,7 +298,7 @@ const ChatWindow = ({
                     isMyMessage ? styles.timeMy : styles.timePartner
                   }`}
                 >
-                  {new Date(msg.createdAt).toLocaleTimeString([], {
+                  {new Date(msg.sentAt).toLocaleTimeString([], {
                     hour: "2-digit",
                     minute: "2-digit",
                   })}

@@ -76,7 +76,7 @@ function PostRestData(props) {
           ...updatedChats[index],
           messageId: message._id,
           lastMessage: message.content,
-          lastMessageDate: message.createdAt,
+          lastMessageDate: message.sentAt,
           messageCount: (updatedChats[index].messageCount || 0) + 1,
           lastLoginTime: message.lastLoginTime,
         };
@@ -86,7 +86,7 @@ function PostRestData(props) {
           fullName: message.sender.fullName,
           photo: message.sender.photo,
           lastMessage: message.content,
-          lastMessageDate: message.createdAt,
+          lastMessageDate: message.sentAt,
           messageCount: 1,
         });
       }

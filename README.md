@@ -1,7 +1,7 @@
-# 💬 ChatSphere - Real-time Chat Application
+#  <img src="public/logo.svg" width="50" alt="ChatSphere Logo"> ChatSphere - Real-time Chat Application
 
 <div align="center">
-  <img src="public/logo.svg" width="150" alt="ChatSphere Logo">
+  <img src="public/thumbnail.svg" width="150" alt="ChatSphere Logo">
 </div>
 
 ## ✨ Key Features
