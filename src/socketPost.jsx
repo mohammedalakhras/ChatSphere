@@ -108,6 +108,7 @@ function PostRestData(props) {
 
   useEffect(() => {
     socket.on("connect", () => {
+      console.log("socket.connected", socket.connected);
       socket.emit("signin", window.localStorage.getItem("token"));
       getChats(setChats);
     });

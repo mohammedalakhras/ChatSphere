@@ -6,4 +6,5 @@ const socket = io(`${process.env.REACT_APP_SERVER_HOST}`, {
   },
 });
 
+
 export default socket;
